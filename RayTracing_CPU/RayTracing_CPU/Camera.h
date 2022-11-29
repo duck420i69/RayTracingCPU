@@ -29,10 +29,11 @@ struct Camera {
 	}
 
 	void updateCamera(vec4 pos, vec4 dir) {
-		vec4 left = { dir.z, 0.0f, -dir.x, 1.0f };
+		vec4 left = { dir.v(2), 0.0f, -dir.v(0), 0.0f};
 		left.normalize();
 		left = left * tanf(fov * DEGREE_TO_RADIAN);
-		vec4 top = dir.cross(left);
+		vec4 top(0.0f, 0.0f, 0.0f, 1.0f);
+		top = dir.cross(left);
 		left = left * aspect_ratio;
 		topleft = dir + top + left;
 		right = left * (-2 / resolution.x);
@@ -40,4 +41,4 @@ struct Camera {
 	}
 };
 
-vec4 shootRay(const Mesh& mesh, const Camera& cam, std::vector<vec4>& buffer, int current);
+vec4 shootRay(const Scene& object, const Camera& cam, std::vector<vec4>& buffer, int current);

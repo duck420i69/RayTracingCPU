@@ -17,49 +17,51 @@ vec2 vec2::operator-(const vec2& other) const
 	return { x - other.x, y - other.y };
 }
 
+vec4::vec4() {
+	v << 0.0f, 0.0f, 0.0f;
+	w = 1.0f;
+}
+
+vec4::vec4(Eigen::Vector3f vector3, float w) {
+	v = vector3;
+	this->w = 1.0f;
+}
+
+vec4::vec4(float x, float y, float z, float w) {
+	v << x, y, z;
+	this->w = w;
+}
+
+vec4 vec4::operator-(const vec4& other) const {
+	return { v - other.v, 1.0f };
+}
+
+vec4 vec4::operator+(const vec4& other) const {
+	return { v + other.v, 1.0f };
+}
+
+float vec4::norm() {
+	return v.norm();
+}
+
+vec4 vec4::cross(const vec4& other) const {
+	return { v.cross(other.v), 1.0f };
+}
+
+float vec4::dot(const vec4& other) const {
+	return v.dot(other.v);
+}
+
+void vec4::normalize() {
+	v.normalize();
+}
+
+vec4 operator*(const vec4& vec, const float& other) {
+	return { vec.v * other, vec.w };
+}
+
 void vec2::normalize() {
 	float lenght = 1/sqrt(x * x + y * y);
 	x *= lenght;
 	y *= lenght;
-}
-
-mat4 mat4::operator+(const mat4& other)
-{
-	mat4 temp{0.0f};
-	for (int i = 0; i < 16; i++) {
-		temp.mat[i] = mat[i] + other.mat[i];
-	}
-	return temp;
-}
-
-mat4 mat4::operator-(const mat4& other)
-{
-	mat4 temp{0.0f};
-	for (int i = 0; i < 16; i++) {
-		temp.mat[i] = mat[i] - other.mat[i];
-	}
-	return temp;
-}
-
-mat4 mat4::operator*(const mat4& other)
-{
-	mat4 result{0.0f};
-	for (int i = 0; i < 16; i++) {
-		for (int j = 0; j < 4; j++) {
-			for (int k = 0; k < 4; k++) {
-				result.mat[i + j * 4] = mat[i + k * 4] * other.mat[k + j * 4];
-			}
-		}
-	}
-	return result;
-}
-
-vec4 mat4::operator*(const vec4& other)
-{
-	vec4 result{0.0f};
-	result.x = other.x * mat[0]  + other.y * mat[1]  + other.z * mat[2]  + other.w * mat[3];
-	result.y = other.x * mat[4]  + other.y * mat[5]  + other.z * mat[6]  + other.w * mat[7];
-	result.z = other.x * mat[8]  + other.y * mat[9]  + other.z * mat[10] + other.w * mat[11];
-	result.w = other.x * mat[12] + other.y * mat[13] + other.z * mat[14] + other.w * mat[15];
-	return result;
 }

@@ -2,6 +2,7 @@
 
 #include "object.h"
 #include <iostream>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <sstream>
@@ -18,7 +19,7 @@ private:
 	std::uint32_t width, height, size, BitsPerPixel;
 
 public:
-	Tga(const char* FilePath);
+	Tga(std::filesystem::path FilePath);
 	std::vector<std::uint8_t> GetPixels() { return this->Pixels; }
 	std::uint32_t GetWidth() const { return this->width; }
 	std::uint32_t GetHeight() const { return this->height; }
@@ -26,7 +27,7 @@ public:
 };
 
 
-Object loadobj(std::string filename);
+Scene loadobj(std::string filename);
 
 
 

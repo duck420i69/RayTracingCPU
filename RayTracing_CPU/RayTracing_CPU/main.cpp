@@ -11,14 +11,16 @@ int main() {
 
     std::vector<vec4> frameBuffer;
     float WINDOW_WIDHT = 1200;
-    float WINDOW_HEIGHT = 900;
+    float WINDOW_HEIGHT = 800;
     frameBuffer.resize((int)WINDOW_WIDHT * (int)WINDOW_HEIGHT);
 
-    vec4 direction = { -1.0, -0.2, -1.0, 1.0 };
+    vec4 direction = { 1.0, 0.0, 0.0, 1.0 };
     direction.normalize();
 
-    Camera cam({ 5.0, 0.5, 4.0, 1.0 }, direction, { WINDOW_WIDHT, WINDOW_HEIGHT }, 70);
-    Object scene = loadobj("pyramid.obj");
+
+    Camera cam({ -800, 0.2, 0, 1.0 }, direction, { WINDOW_WIDHT, WINDOW_HEIGHT }, 60);
+    Scene scene = loadobj("test/Sponza-master/sponza.obj");
+
 
     if (!glfwInit())
         exit(EXIT_FAILURE);
@@ -26,7 +28,7 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    window = glfwCreateWindow(WINDOW_WIDHT, WINDOW_HEIGHT, "Simple example", NULL, NULL);
+    window = glfwCreateWindow(WINDOW_WIDHT, WINDOW_HEIGHT, "Ray tracing", NULL, NULL);
     if (!window)
     {
         glfwTerminate();

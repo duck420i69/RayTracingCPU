@@ -8,22 +8,20 @@
 class ThreadPool {
 public:
 	ThreadPool() {};
-	void startWork(const Camera& cam, const Object& scene, std::vector<vec4>& buffer);
+	void startWork(const Camera& cam, const Scene& scene, std::vector<vec4>& buffer);
 
-	int getWork() {
+	long getWork() {
 		std::unique_lock<std::mutex> lg_lock(mux_work);
+		if (current_work >= total_work) {
+			current_work = 1;
+			samplePerPixel++;
+		}
 		return current_work++;
 	}
 
 	bool isDone() { 
 		std::unique_lock<std::mutex> lg_lock(mux_work);
-		
-		// Pls delete this later
-		if (current_work >= total_work) {
-			current_work = 0;
-			++samplePerPixel;
-		}
-		return current_work >= total_work; 
+		return samplePerPixel >= 1000;
 	}
 
 	int getSamplePerPixel() { return samplePerPixel; }
@@ -32,8 +30,8 @@ private:
 	std::vector<std::thread> m_threadPool;
 	std::mutex mux_work;
 	std::condition_variable cv_should_stop;
-	int current_work, total_work;
+	long current_work, total_work;
 	int samplePerPixel = 1;
 };
 
-void threadWork(ThreadPool& threadPool, const Camera& cam, const Object& scene, std::vector<vec4>& buffer);
+void threadWork(ThreadPool& threadPool, const Camera& cam, const Scene& object, std::vector<vec4>& buffer);

@@ -1,6 +1,9 @@
 #include "loader.h"
+#include <iostream>
 
-Tga::Tga(const char* FilePath)
+
+
+Tga::Tga(std::filesystem::path FilePath)
 {
     std::fstream hFile(FilePath, std::ios::in | std::ios::binary);
     if (!hFile.is_open()) { throw std::invalid_argument("File Not Found."); }
@@ -92,30 +95,138 @@ Tga::Tga(const char* FilePath)
     this->Pixels = ImageData;
 }
 
-Object loadobj(std::string filename) {
-    Object newObject;
-    std::vector<vec4> vertices;
-    std::vector<texel> vertex;
+std::vector<std::shared_ptr<Texture>> loadMTL(std::filesystem::path filename) {
+    std::vector<std::shared_ptr<Texture>> data;
     std::ifstream file;
+    bool hasMaterial = false;
     file.open(filename);
-
     if (file.is_open()) {
-        bool hasTexture = false;
-        bool hasNormal = false;
+        Texture newMTL;
         while (!file.eof()) {
             std::string str;
             getline(file, str);
             std::stringstream input(str);
             input >> str;
-            if (str == "v") {
+            if (str == "newmtl") {
+                if (hasMaterial) {
+                    std::shared_ptr<Texture> texture = std::make_shared<Texture>(std::move(newMTL));
+                    newMTL = {};
+                    data.push_back(texture);
+                }
+                hasMaterial = true;
+                input >> newMTL.name;
+            }
+            else if (str == "Ka") {
+                for (int i = 0; i < 3; i++) input >> newMTL.ambient_color.v(i);
+            }
+            else if (str == "Kd") {
+                for (int i = 0; i < 3; i++) input >> newMTL.diffuse_color.v(i);
+            }
+            else if (str == "Ks") {
+                for (int i = 0; i < 3; i++) input >> newMTL.specular_color.v(i);
+            }
+            else if (str == "Ni") {
+                input >> newMTL.refraction;
+            }
+            else if (str == "Ns") {
+                input >> newMTL.specular_exp;
+            }
+            else if (str == "map_Kd") {
+                input >> str;
+                Tga newTexture(filename.parent_path() / str);
+                if (newTexture.HasAlphaChannel()) {
+                    newMTL.texture_map.resize(newTexture.GetWidth() * newTexture.GetHeight());
+                    std::vector<uint8_t> pixels = newTexture.GetPixels();
+                    newMTL.width = newTexture.GetWidth();
+                    newMTL.height = newTexture.GetHeight();
+                    for (long i = 0; i < newMTL.texture_map.size(); i++) {
+                        newMTL.texture_map[i].v(0) = pixels[i * 4 + 2] / 256.0f;
+                        newMTL.texture_map[i].v(1) = pixels[i * 4 + 1] / 256.0f;
+                        newMTL.texture_map[i].v(2) = pixels[i * 4 + 0] / 256.0f;
+                        newMTL.texture_map[i].w = pixels[i * 4 + 3] / 256.0f;
+                    }
+                }
+                else {
+                    newMTL.texture_map.resize(newTexture.GetWidth() * newTexture.GetHeight());
+                    std::vector<uint8_t> pixels = newTexture.GetPixels();
+                    newMTL.width = newTexture.GetWidth();
+                    newMTL.height = newTexture.GetHeight();
+                    for (long i = 0; i < newMTL.texture_map.size(); i++) {
+                        newMTL.texture_map[i].v(0) = pixels[i * 3 + 2] / 256.0f;
+                        newMTL.texture_map[i].v(1) = pixels[i * 3 + 1] / 256.0f;
+                        newMTL.texture_map[i].v(2) = pixels[i * 3 + 0] / 256.0f;
+                        newMTL.texture_map[i].w = 1.0f;
+                    }
+                }
+            }
+        }
+    }
+    return data;
+}
+
+Scene loadobj(std::string filename) {
+    Object newObject;
+    Scene objects;
+    std::vector<std::shared_ptr<Texture>> textures;
+    std::vector<vec4> vertices;
+    std::vector<texel> vertex;
+    std::ifstream file;
+    std::filesystem::path path(filename);
+    path = std::filesystem::current_path() / path;
+    file.open(path);
+    if (file.is_open()) {
+        int start = 0;
+        bool hasTexture = false;
+        bool hasNormal = false;
+        bool inGroup = false;
+        vec4 maximum = { -INFINITY, -INFINITY, -INFINITY, -INFINITY };
+        vec4 minimum = { INFINITY, INFINITY, INFINITY, INFINITY };
+        while (!file.eof()) {
+            std::string str;
+            getline(file, str);
+            std::stringstream input(str);
+            input >> str;
+            if (str == "mtllib") {
+                input >> str;
+                textures = loadMTL(path.parent_path() / str);
+                for (auto& tex : textures) {
+                    std::cout << tex->name << "\n\n";
+                }
+            }
+            else if (str == "usemtl") {
+                input >> str;
+                for (auto& tex : textures) {
+                    if (tex->name == str) {
+                        newObject.texture = tex;
+                        break;
+                    }
+                }
+            }
+            else if (str == "g") {
+                if (inGroup) {
+                    newObject.collisionBox.push_back(AABB(minimum, maximum, start, newObject.mesh.size() - 1));
+                    objects.objects.push_back(newObject);
+                    newObject.mesh.clear();
+                    newObject.collisionBox.clear();
+                }
+                inGroup = true;
+                start = newObject.mesh.size();
+                maximum = { -INFINITY, -INFINITY, -INFINITY, -INFINITY };
+                minimum = { INFINITY, INFINITY, INFINITY, INFINITY };
+            }
+            else if (str == "v") {
                 vec4 v;
-                input >> v.x >> v.y >> v.z; v.w = 1.0f;
+                input >> v.v(0) >> v.v(1) >> v.v(2); v.w = 1.0f;
                 vertices.push_back(v);
             }
             else if (str == "vt") {
                 texel temp;
-                input >> temp.u >> temp.v;
+                input >> temp.x >> temp.y;
                 vertex.push_back(temp);
+                hasTexture = true;
+            }
+            else if (str == "vn") {
+                hasNormal = true;
             }
             else if (str == "f") {
                 char temp;
@@ -128,11 +239,26 @@ Object loadobj(std::string filename) {
                     input >> v2 >> temp >> vt2 >> temp >> trash;
                     input >> v3 >> temp >> vt3 >> temp >> trash;
                 }
-                newObject.mesh.push_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1], {1.0f, 1.0f, 1.0f, 1.0f}));
+                for (int i = 0; i < 3; i++) {
+                    if (vertices[v1 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v1 - 1].v(i);
+                    if (vertices[v1 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v1 - 1].v(i);
+                }
+                for (int i = 0; i < 3; i++) {
+                    if (vertices[v2 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v2 - 1].v(i);
+                    if (vertices[v2 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v2 - 1].v(i);
+                }
+                for (int i = 0; i < 3; i++) {
+                    if (vertices[v3 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v3 - 1].v(i);
+                    if (vertices[v3 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v3 - 1].v(i);
+                }
+                if (!hasTexture) newObject.mesh.push_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1]));
+                else newObject.mesh.push_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1], vertex[vt1 - 1], vertex[vt2 - 1], vertex[vt3 - 1]));
             }
         }
+        newObject.collisionBox.push_back(AABB(minimum, maximum, start, newObject.mesh.size() - 1));
+        objects.objects.push_back(newObject);
         file.close();
     }
-
-    return newObject;
+    std::cout << "Done loading!\n";
+    return objects;
 }
