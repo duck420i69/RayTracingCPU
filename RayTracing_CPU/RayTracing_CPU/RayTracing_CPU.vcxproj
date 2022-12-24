@@ -113,6 +113,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
       <Optimization>MaxSpeed</Optimization>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,6 +136,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -146,21 +148,32 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="accelerator.h" />
     <ClInclude Include="Camera.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Sampling.h" />
+    <ClInclude Include="Shape.h" />
+    <ClInclude Include="Mesh.h" />
+    <ClInclude Include="input.h" />
+    <ClInclude Include="Sphere.h" />
     <ClInclude Include="threading.h" />
     <ClInclude Include="loader.h" />
     <ClInclude Include="object.h" />
-    <ClInclude Include="ray.h" />
     <ClInclude Include="math.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="accelerator.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="input.cpp" />
     <ClCompile Include="loader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="math.cpp" />
-    <ClCompile Include="object.cpp" />
-    <ClCompile Include="ray.cpp" />
+    <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="Sampling.cpp" />
+    <ClCompile Include="Shape.cpp" />
+    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="threading.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -168,6 +181,10 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="pyramid.obj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test\Odd scene\sphere3.mtl" />
+    <None Include="test\Sponza-master\sponza.mtl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ray.h"
+#include "Renderer.h"
 
 constexpr float DEGREE_TO_RADIAN = 3.14159265359 / 180;
 
@@ -41,4 +41,4 @@ struct Camera {
 	}
 };
 
-vec4 shootRay(const Scene& object, const Camera& cam, std::vector<vec4>& buffer, int current);
+vec4 shootRay(const Scene& object, const Camera& cam, int current, int depth, bool debug = false);

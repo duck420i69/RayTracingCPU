@@ -1,6 +1,8 @@
 #include "loader.h"
+#include "accelerator.h"
 #include <iostream>
-
+#include <algorithm>
+#include <chrono>
 
 
 Tga::Tga(std::filesystem::path FilePath)
@@ -95,13 +97,13 @@ Tga::Tga(std::filesystem::path FilePath)
     this->Pixels = ImageData;
 }
 
-std::vector<std::shared_ptr<Texture>> loadMTL(std::filesystem::path filename) {
-    std::vector<std::shared_ptr<Texture>> data;
+std::vector<std::shared_ptr<Material>> loadMTL(std::filesystem::path filename) {
+    std::vector<std::shared_ptr<Material>> data;
     std::ifstream file;
     bool hasMaterial = false;
     file.open(filename);
     if (file.is_open()) {
-        Texture newMTL;
+        auto newMTL = std::make_shared<Material>();
         while (!file.eof()) {
             std::string str;
             getline(file, str);
@@ -109,65 +111,73 @@ std::vector<std::shared_ptr<Texture>> loadMTL(std::filesystem::path filename) {
             input >> str;
             if (str == "newmtl") {
                 if (hasMaterial) {
-                    std::shared_ptr<Texture> texture = std::make_shared<Texture>(std::move(newMTL));
-                    newMTL = {};
-                    data.push_back(texture);
+                    data.emplace_back(newMTL);
+                    std::cout << data.size() << "\n";
+                    newMTL = std::make_shared<Material>();
+                    std::cout << data.size() << "\n\n";
                 }
                 hasMaterial = true;
-                input >> newMTL.name;
+                input >> newMTL->name;
             }
             else if (str == "Ka") {
-                for (int i = 0; i < 3; i++) input >> newMTL.ambient_color.v(i);
+                for (int i = 0; i < 3; i++) input >> newMTL->ambient_color.v(i);
             }
             else if (str == "Kd") {
-                for (int i = 0; i < 3; i++) input >> newMTL.diffuse_color.v(i);
+                for (int i = 0; i < 3; i++) input >> newMTL->diffuse_color.v(i);
             }
             else if (str == "Ks") {
-                for (int i = 0; i < 3; i++) input >> newMTL.specular_color.v(i);
+                for (int i = 0; i < 3; i++) input >> newMTL->specular_color.v(i);
             }
             else if (str == "Ni") {
-                input >> newMTL.refraction;
+                input >> newMTL->refraction;
             }
             else if (str == "Ns") {
-                input >> newMTL.specular_exp;
+                input >> newMTL->specular_exp;
             }
             else if (str == "map_Kd") {
                 input >> str;
-                Tga newTexture(filename.parent_path() / str);
-                if (newTexture.HasAlphaChannel()) {
-                    newMTL.texture_map.resize(newTexture.GetWidth() * newTexture.GetHeight());
-                    std::vector<uint8_t> pixels = newTexture.GetPixels();
-                    newMTL.width = newTexture.GetWidth();
-                    newMTL.height = newTexture.GetHeight();
-                    for (long i = 0; i < newMTL.texture_map.size(); i++) {
-                        newMTL.texture_map[i].v(0) = pixels[i * 4 + 2] / 256.0f;
-                        newMTL.texture_map[i].v(1) = pixels[i * 4 + 1] / 256.0f;
-                        newMTL.texture_map[i].v(2) = pixels[i * 4 + 0] / 256.0f;
-                        newMTL.texture_map[i].w = pixels[i * 4 + 3] / 256.0f;
+                Tga newMaterial(filename.parent_path() / str);
+                if (newMaterial.HasAlphaChannel()) {
+                    newMTL->texture_map.resize(newMaterial.GetWidth() * newMaterial.GetHeight());
+                    std::vector<uint8_t> pixels = newMaterial.GetPixels();
+                    newMTL->width = newMaterial.GetWidth();
+                    newMTL->height = newMaterial.GetHeight();
+                    for (long i = 0; i < newMTL->texture_map.size(); i++) {
+                        newMTL->texture_map[i].v(0) = pixels[i * 4 + 2] / 256.0f;
+                        newMTL->texture_map[i].v(1) = pixels[i * 4 + 1] / 256.0f;
+                        newMTL->texture_map[i].v(2) = pixels[i * 4 + 0] / 256.0f;
+                        newMTL->texture_map[i].w = pixels[i * 4 + 3] / 256.0f;
                     }
                 }
                 else {
-                    newMTL.texture_map.resize(newTexture.GetWidth() * newTexture.GetHeight());
-                    std::vector<uint8_t> pixels = newTexture.GetPixels();
-                    newMTL.width = newTexture.GetWidth();
-                    newMTL.height = newTexture.GetHeight();
-                    for (long i = 0; i < newMTL.texture_map.size(); i++) {
-                        newMTL.texture_map[i].v(0) = pixels[i * 3 + 2] / 256.0f;
-                        newMTL.texture_map[i].v(1) = pixels[i * 3 + 1] / 256.0f;
-                        newMTL.texture_map[i].v(2) = pixels[i * 3 + 0] / 256.0f;
-                        newMTL.texture_map[i].w = 1.0f;
+                    newMTL->texture_map.resize(newMaterial.GetWidth() * newMaterial.GetHeight());
+                    std::vector<uint8_t> pixels = newMaterial.GetPixels();
+                    newMTL->width = newMaterial.GetWidth();
+                    newMTL->height = newMaterial.GetHeight();
+                    for (long i = 0; i < newMTL->texture_map.size(); i++) {
+                        newMTL->texture_map[i].v(0) = pixels[i * 3 + 2] / 256.0f;
+                        newMTL->texture_map[i].v(1) = pixels[i * 3 + 1] / 256.0f;
+                        newMTL->texture_map[i].v(2) = pixels[i * 3 + 0] / 256.0f;
+                        newMTL->texture_map[i].w = 1.0f;
                     }
                 }
             }
         }
+        data.emplace_back(newMTL);
+    }
+    else {
+        std::cout << "Unable to load material. file: " << filename;
+        throw "fuck";
     }
     return data;
 }
 
 Scene loadobj(std::string filename) {
-    Object newObject;
-    Scene objects;
-    std::vector<std::shared_ptr<Texture>> textures;
+
+
+    std::shared_ptr<Object> newObject = std::make_shared<Object>();
+    Scene scene;
+    std::deque<std::unique_ptr<BVHNode>> bvh;
     std::vector<vec4> vertices;
     std::vector<texel> vertex;
     std::ifstream file;
@@ -175,12 +185,12 @@ Scene loadobj(std::string filename) {
     path = std::filesystem::current_path() / path;
     file.open(path);
     if (file.is_open()) {
-        int start = 0;
-        bool hasTexture = false;
+        auto start = std::chrono::system_clock::now();
+
+        bool hasMaterial = false;
         bool hasNormal = false;
         bool inGroup = false;
-        vec4 maximum = { -INFINITY, -INFINITY, -INFINITY, -INFINITY };
-        vec4 minimum = { INFINITY, INFINITY, INFINITY, INFINITY };
+
         while (!file.eof()) {
             std::string str;
             getline(file, str);
@@ -188,42 +198,37 @@ Scene loadobj(std::string filename) {
             input >> str;
             if (str == "mtllib") {
                 input >> str;
-                textures = loadMTL(path.parent_path() / str);
-                for (auto& tex : textures) {
-                    std::cout << tex->name << "\n\n";
-                }
+                scene.materials = loadMTL(path.parent_path() / str);
             }
             else if (str == "usemtl") {
                 input >> str;
-                for (auto& tex : textures) {
-                    if (tex->name == str) {
-                        newObject.texture = tex;
+                for (auto& mat : scene.materials) {
+                    if (mat->name == str) {
+                        newObject->material = mat;
                         break;
                     }
                 }
             }
             else if (str == "g") {
                 if (inGroup) {
-                    newObject.collisionBox.push_back(AABB(minimum, maximum, start, newObject.mesh.size() - 1));
-                    objects.objects.push_back(newObject);
-                    newObject.mesh.clear();
-                    newObject.collisionBox.clear();
+                    bvh.emplace_back(std::make_unique<BVHNode>(newObject->bound, scene.objects.size()));
+                    bvh.back()->cost = newObject->mesh.size();
+                    newObject->buildTree();
+                    scene.objects.emplace_back(newObject);
+                    newObject = std::make_shared<Object>();
                 }
                 inGroup = true;
-                start = newObject.mesh.size();
-                maximum = { -INFINITY, -INFINITY, -INFINITY, -INFINITY };
-                minimum = { INFINITY, INFINITY, INFINITY, INFINITY };
             }
             else if (str == "v") {
                 vec4 v;
                 input >> v.v(0) >> v.v(1) >> v.v(2); v.w = 1.0f;
-                vertices.push_back(v);
+                vertices.emplace_back(v);
             }
             else if (str == "vt") {
                 texel temp;
                 input >> temp.x >> temp.y;
-                vertex.push_back(temp);
-                hasTexture = true;
+                vertex.emplace_back(temp);
+                hasMaterial = true;
             }
             else if (str == "vn") {
                 hasNormal = true;
@@ -232,33 +237,90 @@ Scene loadobj(std::string filename) {
                 char temp;
                 int index;
                 int v1, v2, v3, vt1, vt2, vt3, trash;
-                if (!hasTexture && !hasNormal)
+                if (!hasMaterial && !hasNormal)
                     input >> v1 >> v2 >> v3;
-                if (hasTexture && hasNormal) {
+                if (hasMaterial && !hasNormal) {
+                    input >> v1 >> temp >> vt1;
+                    input >> v2 >> temp >> vt2;
+                    input >> v3 >> temp >> vt3;
+                }
+                if (!hasMaterial && hasNormal) {
+                    input >> v1 >> temp >> temp >> trash;
+                    input >> v2 >> temp >> temp >> trash;
+                    input >> v3 >> temp >> temp >> trash;
+                }
+                if (hasMaterial && hasNormal) {
                     input >> v1 >> temp >> vt1 >> temp >> trash;
                     input >> v2 >> temp >> vt2 >> temp >> trash;
                     input >> v3 >> temp >> vt3 >> temp >> trash;
                 }
-                for (int i = 0; i < 3; i++) {
-                    if (vertices[v1 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v1 - 1].v(i);
-                    if (vertices[v1 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v1 - 1].v(i);
-                }
-                for (int i = 0; i < 3; i++) {
-                    if (vertices[v2 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v2 - 1].v(i);
-                    if (vertices[v2 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v2 - 1].v(i);
-                }
-                for (int i = 0; i < 3; i++) {
-                    if (vertices[v3 - 1].v(i) > maximum.v(i)) maximum.v(i) = vertices[v3 - 1].v(i);
-                    if (vertices[v3 - 1].v(i) < minimum.v(i)) minimum.v(i) = vertices[v3 - 1].v(i);
-                }
-                if (!hasTexture) newObject.mesh.push_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1]));
-                else newObject.mesh.push_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1], vertex[vt1 - 1], vertex[vt2 - 1], vertex[vt3 - 1]));
+                if (!hasMaterial) newObject->mesh.emplace_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1]));
+                else newObject->mesh.emplace_back(Triangle(vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1], vertex[vt1 - 1], vertex[vt2 - 1], vertex[vt3 - 1]));
+                newObject->bound = Union(newObject->bound, newObject->mesh.back().getBound());
             }
         }
-        newObject.collisionBox.push_back(AABB(minimum, maximum, start, newObject.mesh.size() - 1));
-        objects.objects.push_back(newObject);
+        bvh.emplace_back(std::make_unique<BVHNode>(newObject->bound, scene.objects.size()));
+        bvh.back()->cost = newObject->mesh.size();
+        newObject->buildTree();
+        scene.objects.emplace_back(newObject);
+
+        auto sphere = std::make_shared<Sphere>();
+        sphere->center = vec4(6.0f, 1.0f, 0.0f, 1.0f);
+        sphere->r = 1.0f;
+        sphere->material = scene.materials[0];
+        bvh.emplace_back(std::make_unique<BVHNode>(sphere->getBound(), scene.objects.size()));
+        scene.objects.emplace_back(sphere);
+
+        sphere = std::make_shared<Sphere>();
+        sphere->center = vec4(6.0f, 1.5f, 3.0f, 1.0f);
+        sphere->r = 1.5f;
+        sphere->material = std::make_shared<Material>();
+        sphere->material->diffuse_color = { 0.456f, 0.456f, 0.456f,1 };
+        sphere->material->specular_color = { 0.8, 0.8, 0.8, 1 };
+        sphere->material->specular_exp = 12.0f;
+        bvh.emplace_back(std::make_unique<BVHNode>(sphere->getBound(), scene.objects.size()));
+        scene.objects.emplace_back(sphere);
+
+        //sphere = std::make_shared<Sphere>();
+        //sphere->center = vec4(7.0f, 7.0f, -1.0f, 1.0f);
+        //sphere->r = 5.0f;
+        //sphere->material = scene.materials[0];
+        //bvh.emplace_back(std::make_unique<BVHNode>(sphere->getBound(), scene.objects.size()));
+        //scene.objects.emplace_back(sphere);
+
+        //sphere = std::make_shared<Sphere>();
+        //sphere->center = vec4(4.8f, 0.2f, 2.7f, 1.0f);
+        //sphere->r = 0.2f;
+        //sphere->material = scene.materials[0];
+        //bvh.emplace_back(std::make_unique<BVHNode>(sphere->getBound(), scene.objects.size()));
+        //scene.objects.emplace_back(sphere);
+
         file.close();
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end - start;
+        std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Done loading! Start building tree. Took " << duration.count() << "ms\n";
+
+
+
+        start = std::chrono::system_clock::now();
+
+        std::sort(bvh.begin(), bvh.end(), [](const std::unique_ptr<BVHNode>& b1, const std::unique_ptr<BVHNode>& b2) -> bool {
+            return b1->centroid.v(0) < b2->centroid.v(0);
+            });
+
+        size_t i = 0;
+        constructLinearBVH(constructBVH(std::move(bvh)), scene.tree, i);
+
+        end = std::chrono::system_clock::now();
+        duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        std::cout << "Building tree completed! Took " << duration.count() << "ms\n";
     }
-    std::cout << "Done loading!\n";
-    return objects;
+    else {
+        std::cout << "Unable to load obj. file: " << filename;
+        throw "fuck";
+    }
+
+    return scene;
 }
